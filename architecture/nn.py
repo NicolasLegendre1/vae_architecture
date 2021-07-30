@@ -335,7 +335,7 @@ def transform_into_so3(mu, logvar, n_samples=1):
     logvar : tensor of size (batch_size,3)
         Variance of the posterior (Gaussian function).
     n_samples : int, optional
-        DESCRIPTION. The default is 1.
+        latent space shape. The default is 1.
 
     Returns
     -------
