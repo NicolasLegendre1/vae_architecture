@@ -11,8 +11,7 @@ def test():
     else:
         path_vae = "vae_parameters.json"
         path_data = "data_parameters.json"
-    PATHS, SHAPES, CONSTANTS, SEARCH_SPACE, _ = ds.load_parameters(
-        path_vae)
+    PATHS, SHAPES, CONSTANTS, SEARCH_SPACE, _ = ds.load_parameters(path_vae)
     CONSTANTS.update(SEARCH_SPACE)
     CONSTANTS["latent_space_definition"] = 1
     CONSTANTS["latent_dim"] = 6

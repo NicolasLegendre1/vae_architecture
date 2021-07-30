@@ -1,7 +1,7 @@
 """Summarize all loss of neural network."""
-from torch.nn import functional as F
-import torch.nn
 import torch
+import torch.nn
+from torch.nn import functional as F
 
 
 def final_loss(bce_loss, mu, logvar):
@@ -21,8 +21,7 @@ def bce_on_intensities(x, recon_x, scale_b):
     """BCE summed over the voxels intensities.
     scale_b: plays role of loss' weighting factor.
     """
-    bce = torch.sum(
-        F.binary_cross_entropy(recon_x, x) / scale_b.exp() + 2 * scale_b)
+    bce = torch.sum(F.binary_cross_entropy(recon_x, x) / scale_b.exp() + 2 * scale_b)
     return bce
 
 
@@ -34,7 +33,7 @@ def mse_on_intensities(x, recon_x, scale_b):
     print(max(recon_x))
     print(min(x))
     print(max(x))
-    mse = F.mse_loss(recon_x, x, reduction='sum') / scale_b
+    mse = F.mse_loss(recon_x, x, reduction="sum") / scale_b
     return mse
 
 
@@ -63,13 +62,18 @@ def kullback_leibler_circle(mu, logvar):
     logvar_else = logvar[:, 2:]
 
     kld_circle_attractive = -0.5 * torch.sum(
-        1 + logvar_circle - mu_circle.pow(2) - logvar_circle.exp())
+        1 + logvar_circle - mu_circle.pow(2) - logvar_circle.exp()
+    )
     kld_circle_repulsive = 0.5 * torch.sum(
-        1 + logvar_circle - mu_circle.pow(2) - logvar_circle.exp())
+        1 + logvar_circle - mu_circle.pow(2) - logvar_circle.exp()
+    )
 
     kld_else = -0.5 * torch.sum(
-        1 + (logvar_else - (-0.6))
-        - mu_else.pow(2) / (0.5**2) - logvar_else.exp() / 0.5**2)
+        1
+        + (logvar_else - (-0.6))
+        - mu_else.pow(2) / (0.5 ** 2)
+        - logvar_else.exp() / 0.5 ** 2
+    )
 
     kld = kld_circle_attractive + kld_circle_repulsive + kld_else
     return kld
@@ -78,10 +82,9 @@ def kullback_leibler_circle(mu, logvar):
 def on_circle(mu, logvar):
     mu_circle = mu[:, :2]
 
-    on_circle = 1000 * (torch.sum(mu_circle**2, dim=1) - 1) ** 2
+    on_circle = 1000 * (torch.sum(mu_circle ** 2, dim=1) - 1) ** 2
     on_circle = torch.sum(on_circle)
-    on_circle = on_circle - 0.5 * torch.sum(
-        1 + logvar - mu.pow(2) - logvar.exp())
+    on_circle = on_circle - 0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     return on_circle
 
 
