@@ -36,7 +36,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: $CONDA
-          key: ${{ runner.os }}-conda-${{ hashFiles('reduceSPI.yml') }}
+          key: ${{ runner.os }}-conda-${{ hashFiles('vae_architecture.yml') }}
           restore-keys: |
             ${{ runner.os }}-conda-
       - name: install dependencies
