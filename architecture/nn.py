@@ -432,6 +432,7 @@ class DecoderConv(nn.Module):
         """
         Compute the last layer of the NN
 
+
         Parameters
         ----------
         out_shape : tuple, out shape
