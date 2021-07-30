@@ -1,21 +1,10 @@
-from download import download
 import torch
 import os
 import numpy as np
 from scipy.linalg import block_diag
 CUDA = torch.cuda.is_available()
 DEVICE = torch.device('cuda' if CUDA else 'cpu')
-# This code is not very optimized,
-# and can never become very efficient because it cannot exploit the sparsity of the J matrix.
 
-# Load the J-matrices, which are stored in the same folder as this file
-
-# J matrices come from this paper
-# Rotation matrices for real spherical harmonics: general rotations of atomic orbitals in space-fixed axes
-# Didier Pinchon1 and Philip E Hoggan2
-# https://iopscience.iop.org/article/10.1088/1751-8113/40/7/011/
-
-# Jd = download('https://github.com/AMLab-Amsterdam/lie_learn/releases/download/v1.0/J_dense_0-278.npy')
 base = 'J_dense_0-150.npy'
 path = os.path.join(os.path.dirname(__file__), base)
 Jd = np.load(path, allow_pickle=True)
