@@ -1,0 +1,3 @@
+pip3 install tensorflow numpy pandas torch ray hyperopt logging functools mlflow time copy warnings numba pyfftw glob importlib math csv gzip pickle matplotlib urllib torchvision geomstats scipy
+pip3 install tensorflow numpy pandas torch ray hyperopt logging mlflow numba pyfftw importlib matplotlib torchvision geomstats scipy  scikit-image visdom pytorch_lightning
+
