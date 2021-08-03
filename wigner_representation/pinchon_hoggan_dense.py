@@ -1,11 +1,13 @@
-import torch
 import os
-import numpy as np
-from scipy.linalg import block_diag
-CUDA = torch.cuda.is_available()
-DEVICE = torch.device('cuda' if CUDA else 'cpu')
 
-base = 'J_dense_0-150.npy'
+import numpy as np
+import torch
+from scipy.linalg import block_diag
+
+CUDA = torch.cuda.is_available()
+DEVICE = torch.device("cuda" if CUDA else "cpu")
+
+base = "J_dense_0-150.npy"
 path = os.path.join(os.path.dirname(__file__), base)
 Jd = np.load(path, allow_pickle=True)
 J = []
@@ -30,7 +32,8 @@ def SO3_irreps(g, irreps):
     lenght = g.shape[1]
     for i in range(lenght):
         T[:, :, i] = block_diag(
-            *[rot_mat(g[0, i], g[1, i], g[2, i], la, Jd[la]) for la in irreps])
+            *[rot_mat(g[0, i], g[1, i], g[2, i], la, Jd[la]) for la in irreps]
+        )
     return T
 
 
