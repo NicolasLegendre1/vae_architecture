@@ -1,35 +1,23 @@
 """This file is creating Convolutional Neural Networks."""
 
-from pinchon_hoggan_dense import rot_mat, Jd
-import torch.nn as nn
-import torch
-import cryo_dataset as ds
+from geomstats.geometry.special_orthogonal import SpecialOrthogonal
 import functools
 import numpy as np
 import os
+import torch
+import torch.nn as nn
+import cryo_dataset as ds
+from pinchon_hoggan_dense import rot_mat, Jd
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 
-
-def load_geomstats():
-    import geomstats
-    return geomstats
-
-
-geomstats = load_geomstats()
-
-SpecialOrthogonal = geomstats.geometry.special_orthogonal.SpecialOrthogonal
+CUDA = torch.cuda.is_available()
 
 
 def test():
-    CUDA = torch.cuda.is_available()
     if CUDA:
-        CRYO_TRAIN_VAL_DIR = os.getcwd() + "/Cryo/VAE_Cryo_V3/Data/"
         path_vae = "Cryo/VAE_Cryo_V3/vae_parameters.json"
-        path_data = "Cryo/VAE_Cryo_V3/data_parameters.json"
     else:
-        CRYO_TRAIN_VAL_DIR = os.getcwd() + "\\Data\\"
         path_vae = "vae_parameters.json"
-        path_data = "data_parameters.json"
     PATHS, SHAPES, CONSTANTS, SEARCH_SPACE, _ = ds.load_parameters(
         path_vae)
     CONSTANTS.update(SEARCH_SPACE)
@@ -44,7 +32,6 @@ def test():
     return C
 
 
-CUDA = torch.cuda.is_available()
 DEVICE = torch.device('cuda' if CUDA else 'cpu')
 
 NN_CONV = {

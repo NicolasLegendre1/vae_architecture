@@ -1,3 +1,4 @@
+"""adapted from """
 import torch
 import os
 import numpy as np
@@ -36,10 +37,11 @@ def SO3_irreps(g, irreps):
 
 def SO3_irrep(g, la):
     global Jd
+    J = Jd[la]
     g = np.atleast_2d(g)
     T = np.empty((2 * la + 1, 2 * la + 1, g.shape[1]))
     for i in range(g.shape[1]):
-        T[:, :, i] = rot_mat(g[0, i], g[1, i], g[2, i], la, Jd[la])
+        T[:, :, i] = rot_mat(g[0, i], g[1, i], g[2, i], la, J)
     return T  # np.squeeze(T)
 
 
