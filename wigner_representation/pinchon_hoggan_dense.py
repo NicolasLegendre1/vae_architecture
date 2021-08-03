@@ -14,8 +14,7 @@ def open_Jd():
     J = []
     for i in range(150):
         J.append(torch.Tensor(Jd_numpy[i]))
-    Jd = J.copy()
-    return Jd
+    return J
 
 
 Jd = open_Jd()
