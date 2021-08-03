@@ -3,12 +3,12 @@
 import glob
 import logging
 import os
+
+import cryo_dataset as ds
+import nn
 import torch
 import torch.nn as tnn
 from scipy.spatial.transform import Rotation as R
-
-import nn
-import cryo_dataset as ds
 
 CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda" if CUDA else "cpu")
@@ -16,11 +16,10 @@ DEVICE = torch.device("cuda" if CUDA else "cpu")
 CKPT_PERIOD = 1
 
 W_INIT, B_INIT, NONLINEARITY_INIT = (
-    {0: [[1.0], [0.0]],
-     1: [[1.0, 0.0], [0.0, 1.0]]},
-    {0: [0.0, 0.0],
-     1: [0.01935, -0.02904]},
-    'softplus')
+    {0: [[1.0], [0.0]], 1: [[1.0, 0.0], [0.0, 1.0]]},
+    {0: [0.0, 0.0], 1: [0.01935, -0.02904]},
+    "softplus",
+)
 
 
 def init_xavier_normal(m):
@@ -75,14 +74,14 @@ def init_custom(m):
 
     """
     classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
+    if classname.find("Conv") != -1:
         m.weight.data.normal_(0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
+    elif classname.find("BatchNorm") != -1:
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
 
 
-def init_function(weights_init='xavier'):
+def init_function(weights_init="xavier"):
     """
     Choose the function to initialize the weight of NN.
 
@@ -100,14 +99,13 @@ def init_function(weights_init='xavier'):
     function depending on initialization goal.
 
     """
-    if weights_init == 'xavier':
+    if weights_init == "xavier":
         return init_xavier_normal
-    if weights_init == 'kaiming':
+    if weights_init == "kaiming":
         return init_kaiming_normal
-    if weights_init == 'custom':
+    if weights_init == "custom":
         return init_custom
-    raise NotImplementedError(
-        "This weight initialization is not implemented.")
+    raise NotImplementedError("This weight initialization is not implemented.")
 
 
 def init_modules_and_optimizers(train_params, config):
@@ -127,39 +125,43 @@ def init_modules_and_optimizers(train_params, config):
     """
     modules = {}
     optimizers = {}
-    lr = train_params['lr']
-    beta1 = train_params['beta1']
-    beta2 = train_params['beta2']
+    lr = train_params["lr"]
+    beta1 = train_params["beta1"]
+    beta2 = train_params["beta2"]
     vae = nn.VaeConv(config).to(DEVICE)
 
-    modules['encoder'] = vae.encoder
-    modules['decoder'] = vae.decoder
+    modules["encoder"] = vae.encoder
+    modules["decoder"] = vae.decoder
 
-    if 'adversarial' in train_params['reconstructions']:
+    if "adversarial" in train_params["reconstructions"]:
         discriminator = nn.Discriminator(config).to(DEVICE)
-        modules['discriminator_reconstruction'] = discriminator
+        modules["discriminator_reconstruction"] = discriminator
 
-    if 'adversarial' in train_params['regularizations']:
+    if "adversarial" in train_params["regularizations"]:
         discriminator = nn.Discriminator(config).to(DEVICE)
-        modules['discriminator_regularization'] = discriminator
+        modules["discriminator_regularization"] = discriminator
 
     # Optimizers
-    optimizers['encoder'] = torch.optim.Adam(
-        modules['encoder'].parameters(), lr=lr, betas=(beta1, beta2))
-    optimizers['decoder'] = torch.optim.Adam(
-        modules['decoder'].parameters(), lr=lr, betas=(beta1, beta2))
+    optimizers["encoder"] = torch.optim.Adam(
+        modules["encoder"].parameters(), lr=lr, betas=(beta1, beta2)
+    )
+    optimizers["decoder"] = torch.optim.Adam(
+        modules["decoder"].parameters(), lr=lr, betas=(beta1, beta2)
+    )
 
-    if 'adversarial' in train_params['reconstructions']:
-        optimizers['discriminator_reconstruction'] = torch.optim.Adam(
-            modules['discriminator_reconstruction'].parameters(),
-            lr=train_params['lr'],
-            betas=(train_params['beta1'], train_params['beta2']))
+    if "adversarial" in train_params["reconstructions"]:
+        optimizers["discriminator_reconstruction"] = torch.optim.Adam(
+            modules["discriminator_reconstruction"].parameters(),
+            lr=train_params["lr"],
+            betas=(train_params["beta1"], train_params["beta2"]),
+        )
 
-    if 'adversarial' in train_params['regularizations']:
-        optimizers['discriminator_regularization'] = torch.optim.Adam(
-            modules['discriminator_regularization'].parameters(),
-            lr=train_params['lr'],
-            betas=(train_params['beta1'], train_params['beta2']))
+    if "adversarial" in train_params["regularizations"]:
+        optimizers["discriminator_regularization"] = torch.optim.Adam(
+            modules["discriminator_regularization"].parameters(),
+            lr=train_params["lr"],
+            betas=(train_params["beta1"], train_params["beta2"]),
+        )
 
     return modules, optimizers
 
@@ -186,49 +188,59 @@ def init_training(train_dir, train_params, config):
     train_losses_all_epochs = []
     val_losses_all_epochs = []
 
-    modules, optimizers = init_modules_and_optimizers(
-        train_params, config)
+    modules, optimizers = init_modules_and_optimizers(train_params, config)
 
-    path_base = os.path.join(train_dir, 'epoch_*_checkpoint.pth')
+    path_base = os.path.join(train_dir, "epoch_*_checkpoint.pth")
     ckpts = glob.glob(path_base)
     if len(ckpts) == 0:
-        weights_init = train_params['weights_init']
-        logging.info(
-            "No checkpoints found. Initializing with %s.", weights_init)
+        weights_init = train_params["weights_init"]
+        logging.info("No checkpoints found. Initializing with %s.", weights_init)
 
         for module_name, module in modules.items():
             module.apply(init_function(weights_init))
 
     else:
-        ckpts_ids_and_paths = [
-            (int(f.split('_')[-2]), f) for f in ckpts]
-        _, ckpt_path = max(
-            ckpts_ids_and_paths, key=lambda item: item[0])
+        ckpts_ids_and_paths = [(int(f.split("_")[-2]), f) for f in ckpts]
+        _, ckpt_path = max(ckpts_ids_and_paths, key=lambda item: item[0])
         logging.info("Found checkpoints. Initializing with %s.", ckpt_path)
         if torch.cuda.is_available():
-            def map_location(storage): return storage.cuda()
+
+            def map_location(storage):
+                return storage.cuda()
+
         else:
-            map_location = 'cpu'
+            map_location = "cpu"
         ckpt = torch.load(ckpt_path, map_location=map_location)
         # ckpt = torch.load(ckpt_path, map_location=DEVICE)
         for module_name in modules:
             module = modules[module_name]
             optimizer = optimizers[module_name]
             module_ckpt = ckpt[module_name]
-            module.load_state_dict(module_ckpt['module_state_dict'])
-            optimizer.load_state_dict(
-                module_ckpt['optimizer_state_dict'])
-            start_epoch = ckpt['epoch'] + 1
-            train_losses_all_epochs = ckpt['train_losses']
-            val_losses_all_epochs = ckpt['val_losses']
+            module.load_state_dict(module_ckpt["module_state_dict"])
+            optimizer.load_state_dict(module_ckpt["optimizer_state_dict"])
+            start_epoch = ckpt["epoch"] + 1
+            train_losses_all_epochs = ckpt["train_losses"]
+            val_losses_all_epochs = ckpt["val_losses"]
 
-    return (modules, optimizers, start_epoch,
-            train_losses_all_epochs, val_losses_all_epochs)
+    return (
+        modules,
+        optimizers,
+        start_epoch,
+        train_losses_all_epochs,
+        val_losses_all_epochs,
+    )
 
 
-def save_checkpoint(epoch, modules, optimizers, dir_path,
-                    train_losses_all_epochs, val_losses_all_epochs,
-                    nn_architecture, train_params):
+def save_checkpoint(
+    epoch,
+    modules,
+    optimizers,
+    dir_path,
+    train_losses_all_epochs,
+    val_losses_all_epochs,
+    nn_architecture,
+    train_params,
+):
     """
     Save NN's weights at a precise epoch.
 
@@ -253,15 +265,15 @@ def save_checkpoint(epoch, modules, optimizers, dir_path,
         module = modules[module_name]
         optimizer = optimizers[module_name]
         checkpoint[module_name] = {
-            'module_state_dict': module.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict()}
-        checkpoint['epoch'] = epoch
-        checkpoint['train_losses'] = train_losses_all_epochs
-        checkpoint['val_losses'] = val_losses_all_epochs
-        checkpoint['nn_architecture'] = nn_architecture
-        checkpoint['train_params'] = train_params
-    checkpoint_path = os.path.join(
-        dir_path, 'epoch_%d_checkpoint.pth' % epoch)
+            "module_state_dict": module.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+        }
+        checkpoint["epoch"] = epoch
+        checkpoint["train_losses"] = train_losses_all_epochs
+        checkpoint["val_losses"] = val_losses_all_epochs
+        checkpoint["nn_architecture"] = nn_architecture
+        checkpoint["train_params"] = train_params
+    checkpoint_path = os.path.join(dir_path, "epoch_%d_checkpoint.pth" % epoch)
     torch.save(checkpoint, checkpoint_path)
 
 
@@ -286,25 +298,24 @@ def load_checkpoint(output, epoch_id=None):
 
     """
     if epoch_id is None:
-        ckpts = glob.glob(
-            '%s/checkpoint_*/epoch_*_checkpoint.pth' % output)
+        ckpts = glob.glob("%s/checkpoint_*/epoch_*_checkpoint.pth" % output)
         if len(ckpts) == 0:
-            raise ValueError('No checkpoints found.')
-        ckpts_ids_and_paths = [(int(f.split('_')[-2]), f) for f in ckpts]
-        _, ckpt_path = max(
-            ckpts_ids_and_paths, key=lambda item: item[0])
+            raise ValueError("No checkpoints found.")
+        ckpts_ids_and_paths = [(int(f.split("_")[-2]), f) for f in ckpts]
+        _, ckpt_path = max(ckpts_ids_and_paths, key=lambda item: item[0])
     else:
         # Load module corresponding to epoch_id
-        ckpt_path = f"{output}/checkpoint_{epoch_id:0>6d}/" + \
-            "epoch_{epoch_id}_checkpoint.pth"
+        ckpt_path = (
+            f"{output}/checkpoint_{epoch_id:0>6d}/" + "epoch_{epoch_id}_checkpoint.pth"
+        )
 
         print(ckpt_path)
         if not os.path.isfile(ckpt_path):
             raise ValueError(
-                'No checkpoints found for epoch %d in output %s.' % (
-                    epoch_id, output))
+                "No checkpoints found for epoch %d in output %s." % (epoch_id, output)
+            )
 
-    print('Found checkpoint. Getting: %s.' % ckpt_path)
+    print("Found checkpoint. Getting: %s." % ckpt_path)
     ckpt = torch.load(ckpt_path, map_location=DEVICE)
     return ckpt
 
@@ -325,11 +336,10 @@ def load_module_state(output, module, module_name, epoch_id=None):
     module : NN, NN with the weight of the NN after the epoch_id.
 
     """
-    ckpt = load_checkpoint(
-        output=output, epoch_id=epoch_id)
+    ckpt = load_checkpoint(output=output, epoch_id=epoch_id)
 
     module_ckpt = ckpt[module_name]
-    module.load_state_dict(module_ckpt['module_state_dict'])
+    module.load_state_dict(module_ckpt["module_state_dict"])
 
     return module
 
@@ -373,20 +383,20 @@ def quaternion_to_euler(labels):
     n = len(labels)
     liste = []
     for i in range(n):
-        A = labels['rotation_quaternion'].iloc[i].replace(' ]', ']')
-        A = A.replace('  ', ' ')
-        A = A.replace('  ', ' ')
-        A = A.replace('  ', ' ')
-        A = A.replace(' ]', ']')
-        A = A.replace('  ', ' ')
-        A = A[1:-1].split(' ')
+        A = labels["rotation_quaternion"].iloc[i].replace(" ]", "]")
+        A = A.replace("  ", " ")
+        A = A.replace("  ", " ")
+        A = A.replace("  ", " ")
+        A = A.replace(" ]", "]")
+        A = A.replace("  ", " ")
+        A = A[1:-1].split(" ")
         B = list(map(float, A))
         r = R.from_quat(B)
-        liste.append(r.as_euler('zyx', degrees=True))
+        liste.append(r.as_euler("zyx", degrees=True))
     return liste
 
 
-def load_module(output, path_vae_param, module_name='encoder', epoch_id=None):
+def load_module(output, path_vae_param, module_name="encoder", epoch_id=None):
     """
     Affects weights of the considered epoch_id to NN's weights.
 
@@ -403,27 +413,23 @@ def load_module(output, path_vae_param, module_name='encoder', epoch_id=None):
     module : NN, NN with the weight of the NN after the epoch_id.
 
     """
-    _, _, c, _, m = ds.load_parameters(
-        path_vae_param)
+    _, _, c, _, m = ds.load_parameters(path_vae_param)
     constants, meta_param_names = c, m
-    ckpt = load_checkpoint(
-        output=output, epoch_id=epoch_id)
-    nn_architecture = ckpt['nn_architecture']
+    ckpt = load_checkpoint(output=output, epoch_id=epoch_id)
+    nn_architecture = ckpt["nn_architecture"]
     if "is_3d" not in nn_architecture.keys():
         nn_architecture["is_3d"] = True
-    nn_architecture['conv_dim'] = 3 if nn_architecture["is_3d"] else 2
-    nn_architecture.update(get_under_dic_cons(
-        constants, meta_param_names))
-    nn_type = nn_architecture['nn_type']
-    print('Loading %s from network of architecture: %s...' % (
-        module_name, nn_type))
+    nn_architecture["conv_dim"] = 3 if nn_architecture["is_3d"] else 2
+    nn_architecture.update(get_under_dic_cons(constants, meta_param_names))
+    nn_type = nn_architecture["nn_type"]
+    print("Loading %s from network of architecture: %s..." % (module_name, nn_type))
     vae = nn.VaeConv(nn_architecture)
     modules = {}
-    modules['encoder'] = vae.encoder
-    modules['decoder'] = vae.decoder
+    modules["encoder"] = vae.encoder
+    modules["decoder"] = vae.decoder
     module = modules[module_name].to(DEVICE)
     module_ckpt = ckpt[module_name]
-    module.load_state_dict(module_ckpt['module_state_dict'])
+    module.load_state_dict(module_ckpt["module_state_dict"])
 
     return module
 
@@ -442,5 +448,5 @@ def get_logging_shape(tensor):
 
     """
     shape = tensor.shape
-    logging_shape = '(' + ('%s, ' * len(shape) % tuple(shape))[:-2] + ')'
+    logging_shape = "(" + ("%s, " * len(shape) % tuple(shape))[:-2] + ")"
     return logging_shape

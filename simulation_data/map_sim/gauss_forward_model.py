@@ -1,9 +1,9 @@
 import math
-import numpy as np
-import numba as nb
-import coords
-
 import os
+
+import coords
+import numba as nb
+import numpy as np
 
 
 def make_gauss_2d(xv, yv, mu, sigma):
@@ -25,6 +25,7 @@ def make_map_3d(atoms, xyz, N, sigma):
 # precompute rotated idx and rotated atoms for each rotation?
 # copy data over in rotation matrix, or as quaternions for compresion and then compute 3x3 R on the fly
 # how big does patch need to be? 3 sigma overkill?
+
 
 @nb.guvectorize(
     [
@@ -124,10 +125,8 @@ def make_proj_gpu(
     )  # only need x and y part since will ignore final rotated z coordinate
     # have to .copy because can only pass in subset on first axis, otherwise error that non-contiguous
     N_gpu = nb.cuda.to_device(N * np.ones(atoms.shape[1]).astype(np.int64))
-    n_trunc_gpu = nb.cuda.to_device(
-        n_trunc * np.ones(atoms.shape[1]).astype(np.int64))
-    sigma_gpu = nb.cuda.to_device(
-        sigma * np.ones(atoms.shape[1]).astype(np.float64))
+    n_trunc_gpu = nb.cuda.to_device(n_trunc * np.ones(atoms.shape[1]).astype(np.int64))
+    sigma_gpu = nb.cuda.to_device(sigma * np.ones(atoms.shape[1]).astype(np.float64))
     xy_gpu = nb.cuda.to_device(xy)
     atoms_gpu = nb.cuda.to_device(
         atoms[:3, :]
