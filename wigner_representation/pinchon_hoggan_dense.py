@@ -1,4 +1,4 @@
-"""adapted from """
+"""adapted from Taco Cohen paper."""
 import torch
 import os
 import numpy as np
