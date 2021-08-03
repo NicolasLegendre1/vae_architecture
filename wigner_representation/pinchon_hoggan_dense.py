@@ -6,43 +6,19 @@ from scipy.linalg import block_diag
 CUDA = torch.cuda.is_available()
 DEVICE = torch.device('cuda' if CUDA else 'cpu')
 
-base = 'J_dense_0-150.npy'
-path = os.path.join(os.path.dirname(__file__), base)
-Jd = np.load(path, allow_pickle=True)
-J = []
-for i in range(150):
-    J.append(torch.Tensor(Jd[i]))
-Jd = J.copy()
+
+def open_Jd():
+    base = 'J_dense_0-150.npy'
+    path = os.path.join(os.path.dirname(__file__), base)
+    Jd = np.load(path, allow_pickle=True)
+    J = []
+    for i in range(150):
+        J.append(torch.Tensor(Jd[i]))
+    Jd = J.copy()
+    return Jd
 
 
-def SO3_irreps(g, irreps):
-    global Jd
-
-    # First, compute sinusoids at all required frequencies, i.e.
-    # cos(n x) for n=0, ..., max(irreps)
-    # sin(n x) for n=-max(irreps), ..., max(irreps)
-    # where x ranges over the three parameters of SO(3).
-
-    # In theory, it may be faster to evaluate cos(x) once and then use
-    # Chebyshev polynomials to obtain cos(n*x), but in practice this appears
-    # to be slower than just evaluating cos(n*x).
-    dim = np.sum(2 * np.array(irreps) + 1)
-    T = np.empty((dim, dim, g.shape[1]))
-    lenght = g.shape[1]
-    for i in range(lenght):
-        T[:, :, i] = block_diag(
-            *[rot_mat(g[0, i], g[1, i], g[2, i], la, Jd[la]) for la in irreps])
-    return T
-
-
-def SO3_irrep(g, la):
-    global Jd
-    J = Jd[la]
-    g = np.atleast_2d(g)
-    T = np.empty((2 * la + 1, 2 * la + 1, g.shape[1]))
-    for i in range(g.shape[1]):
-        T[:, :, i] = rot_mat(g[0, i], g[1, i], g[2, i], la, J)
-    return T  # np.squeeze(T)
+Jd = open_Jd()
 
 
 def z_rot_mat(angle, la):
