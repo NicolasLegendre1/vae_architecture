@@ -154,8 +154,9 @@ class Train(Trainable):
         datasets = ds.open_dataset(
             CRYO_TRAIN_VAL_DIR+PATHS[dataset_name],
             CONSTANTS["img_shape"][-1], CONSTANTS["is_3d"])
-        train_dataset, val_dataset, train_loader, val_loader = ds.split_dataset(
-            datasets, CONSTANTS["batch_size"], CONSTANTS["frac_val"])
+        train_dataset, val_dataset, train_loader, val_loader = \
+            ds.split_dataset(datasets, CONSTANTS["batch_size"],
+                             CONSTANTS["frac_val"])
         m, o, s, t, v = train_utils.init_training(
             self.logdir, train_params, CONSTANTS)
         modules, optimizers, start_epoch = m, o, s
@@ -223,7 +224,7 @@ class Train(Trainable):
             z_from_prior = nn.sample_from_prior(
                 nn_architecture['latent_dim'],
                 n_samples=n_batch_data).to(DEVICE)
-            batch_from_prior, scale_b_from_prior = decoder(
+            batch_from_prior, _ = decoder(
                 z_from_prior)
 
             if 'adversarial' in train_params['reconstructions']:
@@ -426,7 +427,7 @@ class Train(Trainable):
                 z_from_prior = nn.sample_from_prior(
                     nn_architecture['latent_dim'],
                     n_samples=n_batch_data).to(DEVICE)
-                batch_from_prior, scale_b_from_prior = decoder(
+                batch_from_prior, _ = decoder(
                     z_from_prior)
 
                 if 'adversarial' in train_params['reconstructions']:
@@ -558,6 +559,7 @@ class Train(Trainable):
                 module=module,
                 epoch_id=epoch_id)
 
+    @staticmethod
     def print_train_logs(self,
                          epoch,
                          batch_idx, n_batches, n_data, n_batch_data,
