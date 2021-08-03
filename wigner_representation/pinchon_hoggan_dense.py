@@ -10,10 +10,10 @@ DEVICE = torch.device('cuda' if CUDA else 'cpu')
 def open_Jd():
     base = 'J_dense_0-150.npy'
     path = os.path.join(os.path.dirname(__file__), base)
-    Jd = np.load(path, allow_pickle=True)
+    Jd_numpy = np.load(path, allow_pickle=True)
     J = []
     for i in range(150):
-        J.append(torch.Tensor(Jd[i]))
+        J.append(torch.Tensor(Jd_numpy[i]))
     Jd = J.copy()
     return Jd
 
