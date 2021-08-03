@@ -1,15 +1,7 @@
-<<<<<<< HEAD
 """adapted from Taco Cohen paper."""
 import torch
-
-=======
-"""adapted from """
->>>>>>> 4d6d9acde063758302f60a7197b0bda0a952b9a0
 import os
-
 import numpy as np
-import torch
-from scipy.linalg import block_diag
 
 CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda" if CUDA else "cpu")
