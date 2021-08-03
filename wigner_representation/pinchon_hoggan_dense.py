@@ -1,14 +1,16 @@
 """adapted from Taco Cohen paper."""
-import torch
 import os
+
 import numpy as np
+import torch
 from scipy.linalg import block_diag
+
 CUDA = torch.cuda.is_available()
-DEVICE = torch.device('cuda' if CUDA else 'cpu')
+DEVICE = torch.device("cuda" if CUDA else "cpu")
 
 
 def open_Jd():
-    base = 'J_dense_0-150.npy'
+    base = "J_dense_0-150.npy"
     path = os.path.join(os.path.dirname(__file__), base)
     Jd_numpy = np.load(path, allow_pickle=True)
     J = []
