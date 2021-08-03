@@ -1,11 +1,12 @@
-"""This file create Convolutional Neural Networks."""
+"""This file is creating Convolutional Neural Networks."""
+
+from pinchon_hoggan_dense import rot_mat, Jd
+import torch.nn as nn
+import torch
+import cryo_dataset as ds
 import functools
 import numpy as np
 import os
-import torch.nn as nn
-import torch
-from pinchon_hoggan_dense import rot_mat, Jd
-
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 
 
@@ -17,7 +18,32 @@ def load_geomstats():
 geomstats = load_geomstats()
 
 SpecialOrthogonal = geomstats.geometry.special_orthogonal.SpecialOrthogonal
-SO3 = SpecialOrthogonal(3, point_type="vector")
+
+
+def test():
+    CUDA = torch.cuda.is_available()
+    if CUDA:
+        CRYO_TRAIN_VAL_DIR = os.getcwd() + "/Cryo/VAE_Cryo_V3/Data/"
+        path_vae = "Cryo/VAE_Cryo_V3/vae_parameters.json"
+        path_data = "Cryo/VAE_Cryo_V3/data_parameters.json"
+    else:
+        CRYO_TRAIN_VAL_DIR = os.getcwd() + "\\Data\\"
+        path_vae = "vae_parameters.json"
+        path_data = "data_parameters.json"
+    PATHS, SHAPES, CONSTANTS, SEARCH_SPACE, _ = ds.load_parameters(
+        path_vae)
+    CONSTANTS.update(SEARCH_SPACE)
+    CONSTANTS["latent_space_definition"] = 1
+    CONSTANTS["latent_dim"] = 10
+    enc = EncoderConv(CONSTANTS)
+    A = torch.zeros(200, 1, 64, 64, 64)
+    B = enc.forward(A)
+    print(B[2].shape)
+    dec = DecoderConv(CONSTANTS)
+    C = dec.forward(B[2])
+    return C
+
+
 CUDA = torch.cuda.is_available()
 DEVICE = torch.device('cuda' if CUDA else 'cpu')
 
@@ -46,26 +72,18 @@ def conv_parameters(conv_dim, kernel_size, stride, padding, dilation):
 
     Parameters
     ----------
-    conv_dim : int
-        2 or 3 for 2d or 3d problems.
-    kernel_size : int
-        Kernel size.
-    stride : int
-        Stride.
-    padding : int
-        Padding.
-    dilation : int
-        Dilation.
+    conv_dim : int, 2 or 3 for 2d or 3d problems.
+    kernel_size : int, kernel size.
+    stride : int, stride.
+    padding : int, padding.
+    dilation : int, dilation.
 
 
     Returns
     -------
-    kernel_size : array
-        Kernel size for a 2d or 3d problem.
-    stride : array
-        Stride for a 2d or 3d problem.
-    padding : array
-        Padding for a 2d or 3d problem.
+    kernel_size : array, kernel size for a 2d or 3d problem
+    stride : array, stride for a 2d or 3d problem
+    padding : array, padding for a 2d or 3d problem
     """
     if type(kernel_size) is int:
         kernel_size = np.repeat(kernel_size, conv_dim)
@@ -94,25 +112,17 @@ def conv_transpose_input_size(out_shape, in_channels, kernel_size, stride,
 
     Parameters
     ----------
-    out_shape : tuple
-        Out shape of the layer.
-    in_channels : int
-        Number of in channel.
-    kernel_size : int
-        Kernel size.
-    stride : int
-        Stride.
-    padding : int
-        Padding.
-    dilation : int
-        Dilation.
-    output_padding : int, optional
-        Out pad, the default is OUT_PAD.
+    out_shape : tuple, out shape of the layer.
+    in_channels : int, number of in channel.
+    kernel_size : int, kernel size.
+    stride : int,  stride.
+    padding : int,padding.
+    dilation : int, dilation.
+    output_padding : int optional, out pad, the default is OUT_PAD.
 
     Returns
     -------
-    tuple
-        Shape of the information before passing the layer.
+    tuple, shape of the information before passing the layer.
     """
     conv_dim = len(out_shape[1:])
     kernel_size, stride, padding, dilation = conv_parameters(
@@ -147,22 +157,15 @@ def conv_output_size(in_shape, out_channels, kernel_size, stride, padding,
 
     Parameters
     ----------
-    in_shape : tuple
-        Shape of the input of the layer.
-    out_channels : int
-        Number of output channels.
-    kernel_size : int
-        Kernel size.
-    stride : int
-        Stride.
-    padding : int
-        Padding.
-    dilation : int
-        Dilation.
+    in_shape : tuple, shape of the input of the layer.
+    out_channels : int, number of output channels.
+    kernel_size : int, kernel size.
+    stride : int,  stride.
+    padding : int,padding.
+    dilation : int, dilation.
     Returns
     -------
-    out_shape : tuple
-        Shape of the output of the layer.
+    out_shape : tuple, shape of the output of the layer.
     """
     out_shape = conv_transpose_input_size(
         out_shape=in_shape,
@@ -185,8 +188,7 @@ class EncoderConv(nn.Module):
 
         Parameters
         ----------
-        config : dic
-            Principal parameters to build a encoder.
+        config : dic, principal constants to build a encoder.
 
         Returns
         -------
@@ -266,15 +268,12 @@ class EncoderConv(nn.Module):
 
         Parameters
         ----------
-        in_shape : tuple
-            Input shape
-        out_channels : int
-            Number of channels.
+        in_shape : tuple, input shape
+        out_channels : int, number of channels.
 
         Returns
         -------
-        out_shape : tuple
-            Shape of the output of the layer
+        out_shape : tuple, shape of the output of the layer
 
         """
         return conv_output_size(
@@ -290,19 +289,13 @@ class EncoderConv(nn.Module):
 
         Parameters
         ----------
-        x : tensor
-            Image or voxel.
+        x : tensor, image or voxel.
 
         Returns
         -------
-        mu : tensor
-            Expectation of the posterior (Gaussian function).
-        logvar : tensor
-            Variance of the posterior (Gaussian function).
-        z: tensor
-            Latent space.
-        matrix: tensor
-            Wigner matrix of size 2l+1 if latent_space_definition != 0.
+        mu : tensor, latent space mu.
+        logvar : tensor, latent space sigma.
+
         """
         h = x
         for i in range(self.n_blocks):
@@ -314,42 +307,31 @@ class EncoderConv(nn.Module):
             mu = self.fc1(h)
             logvar = self.fc2(h)
             z = reparametrize(mu, logvar)
-            return mu, logvar, z, torch.zeros(mu.shape[0], 3, 3)
+            return mu, logvar, z, torch.zeros(mu.shape)
         mu = self.fc_nn_so3_mu(h)
         logvar = self.fc_nn_so3_logvar(h)
-        matrix = transform_into_so3(mu, logvar)
-        z0 = torch.matmul(matrix, self.z0)
-        z1 = torch.matmul(matrix, self.z1)
-        z = torch.cat((z0, z1), dim=1)
-        return mu, logvar, z, matrix
+        if self.latent_space_definition == 1:
+            matrix = transform_into_so3(mu, logvar, self.latent_dim)
+            z0 = torch.matmul(matrix, self.z0)
+            z1 = torch.matmul(matrix, self.z1)
+            z = torch.cat((z0, z1), dim=1)
+            return mu, logvar, z, matrix
+        rotvec = reparametrize(mu, logvar)
+        return mu, logvar, rotvec, torch.zeros(mu.shape)
 
 
-def transform_into_so3(mu, logvar, n_samples=1):
-    """
-    Randomly chooses a latent space from the posterior.
+SO3 = SpecialOrthogonal(3, point_type="vector")
 
-    Parameters
-    ----------
-    mu : tensor of size (batch_size,3)
-        Expectation of the posterior (Gaussian function).
-    logvar : tensor of size (batch_size,3)
-        Variance of the posterior (Gaussian function).
-    n_samples : int, optional
-        latent space shape. The default is 1.
 
-    Returns
-    -------
-    matrices : TYPE
-        DESCRIPTION.
-
-    """
-    n_batch_data, latent_dim = mu.shape
+def transform_into_so3(mu, logvar, latent_dim, n_samples=1):
+    n_batch_data, latent_shape = mu.shape
     sigma = logvar.mul(0.5).exp_()
     if CUDA:
         eps = torch.cuda.FloatTensor(
-            n_samples, n_batch_data, latent_dim).normal_()
+            n_samples, n_batch_data, latent_shape).normal_()
     else:
-        eps = torch.FloatTensor(n_samples, n_batch_data, latent_dim).normal_()
+        eps = torch.FloatTensor(n_samples, n_batch_data,
+                                latent_shape).normal_()
     eps = eps.reshape(eps.shape[1:])
     tang_mu = eps*sigma
     z = mu+tang_mu
@@ -431,7 +413,6 @@ class DecoderConv(nn.Module):
     def end_block(self, out_shape, dec_c_factor):
         """
         Compute the last layer of the NN
-
 
         Parameters
         ----------

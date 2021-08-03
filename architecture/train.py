@@ -154,7 +154,7 @@ class Train(Trainable):
         datasets = ds.open_dataset(
             CRYO_TRAIN_VAL_DIR+PATHS[dataset_name],
             CONSTANTS["img_shape"][-1], CONSTANTS["is_3d"])
-        train_dataset, val_dataset, train_loader, val_loader = \
+        _, _, train_loader, val_loader = \
             ds.split_dataset(datasets, CONSTANTS["batch_size"],
                              CONSTANTS["frac_val"])
         m, o, s, t, v = train_utils.init_training(

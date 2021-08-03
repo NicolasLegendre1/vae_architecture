@@ -27,22 +27,23 @@ def SO3_irreps(g, irreps):
     # to be slower than just evaluating cos(n*x).
     dim = np.sum(2 * np.array(irreps) + 1)
     T = np.empty((dim, dim, g.shape[1]))
-    for i in range(g.shape[1]):
+    lenght = g.shape[1]
+    for i in range(lenght):
         T[:, :, i] = block_diag(
-            *[rot_mat(g[0, i], g[1, i], g[2, i], l, Jd[l]) for l in irreps])
+            *[rot_mat(g[0, i], g[1, i], g[2, i], la, Jd[la]) for la in irreps])
     return T
 
 
-def SO3_irrep(g, l):
+def SO3_irrep(g, la):
     global Jd
     g = np.atleast_2d(g)
-    T = np.empty((2 * l + 1, 2 * l + 1, g.shape[1]))
+    T = np.empty((2 * la + 1, 2 * la + 1, g.shape[1]))
     for i in range(g.shape[1]):
-        T[:, :, i] = rot_mat(g[0, i], g[1, i], g[2, i], l, Jd[l])
+        T[:, :, i] = rot_mat(g[0, i], g[1, i], g[2, i], la, Jd[la])
     return T  # np.squeeze(T)
 
 
-def z_rot_mat(angle, l):
+def z_rot_mat(angle, la):
     """
     Create the matrix representation of a z-axis rotation by the given angle,
     in the irrep l of dimension 2 * l + 1, in the basis of real centered
@@ -52,16 +53,16 @@ def z_rot_mat(angle, l):
     on the diagonal and anti-diagonal are non-zero, so explicitly constructing
     this matrix is unnecessary.
     """
-    M = torch.zeros((2 * l + 1, 2 * l + 1)).to(DEVICE)
-    inds = torch.arange(0, 2 * l + 1, 1).to(DEVICE)
-    reversed_inds = torch.arange(2 * l, -1, -1).to(DEVICE)
-    frequencies = torch.arange(l, -l - 1, -1).to(DEVICE)
+    M = torch.zeros((2 * la + 1, 2 * la + 1)).to(DEVICE)
+    inds = torch.arange(0, 2 * la + 1, 1).to(DEVICE)
+    reversed_inds = torch.arange(2 * la, -1, -1).to(DEVICE)
+    frequencies = torch.arange(la, -la - 1, -1).to(DEVICE)
     M[inds, reversed_inds] = torch.sin(frequencies * angle).to(DEVICE)
     M[inds, inds] = torch.cos(frequencies * angle).to(DEVICE)
     return M
 
 
-def rot_mat(alpha, beta, gamma, l, J):
+def rot_mat(alpha, beta, gamma, la, J):
     """
     Compute the representation matrix of a rotation by ZYZ-Euler
     angles (alpha, beta, gamma) in representation l in the basis
@@ -73,31 +74,31 @@ def rot_mat(alpha, beta, gamma, l, J):
     The forementioned function is here:
     https://sites.google.com/site/theodoregoetz/notes/wignerdfunction
     """
-    Xa = z_rot_mat(alpha, l)
-    Xb = z_rot_mat(beta, l)
-    Xc = z_rot_mat(gamma, l)
+    Xa = z_rot_mat(alpha, la)
+    Xb = z_rot_mat(beta, la)
+    Xc = z_rot_mat(gamma, la)
     m1 = torch.matmul(torch.matmul(torch.matmul(Xa, J), Xb), J)
     matrix = torch.matmul(m1, Xc)
     return matrix
 
 
-def derivative_z_rot_mat(angle, l):
-    M = np.zeros((2 * l + 1, 2 * l + 1))
-    inds = np.arange(0, 2 * l + 1, 1)
-    reversed_inds = np.arange(2 * l, -1, -1)
-    frequencies = np.arange(l, -l - 1, -1)
+def derivative_z_rot_mat(angle, la):
+    M = np.zeros((2 * la + 1, 2 * la + 1))
+    inds = np.arange(0, 2 * la + 1, 1)
+    reversed_inds = np.arange(2 * la, -1, -1)
+    frequencies = np.arange(la, -la - 1, -1)
     M[inds, reversed_inds] = np.cos(frequencies * angle) * frequencies
     M[inds, inds] = -np.sin(frequencies * angle) * frequencies
     return M
 
 
-def derivative_rot_mat(alpha, beta, gamma, l, J):
-    Xa = z_rot_mat(alpha, l)
-    Xb = z_rot_mat(beta, l)
-    Xc = z_rot_mat(gamma, l)
-    dXa_da = derivative_z_rot_mat(alpha, l)
-    dXb_db = derivative_z_rot_mat(beta, l)
-    dXc_dc = derivative_z_rot_mat(gamma, l)
+def derivative_rot_mat(alpha, beta, gamma, la, J):
+    Xa = z_rot_mat(alpha, la)
+    Xb = z_rot_mat(beta, la)
+    Xc = z_rot_mat(gamma, la)
+    dXa_da = derivative_z_rot_mat(alpha, la)
+    dXb_db = derivative_z_rot_mat(beta, la)
+    dXc_dc = derivative_z_rot_mat(gamma, la)
 
     dDda = dXa_da.dot(J).dot(Xb).dot(J).dot(Xc)
     dDdb = Xa.dot(J).dot(dXb_db).dot(J).dot(Xc)
