@@ -1,6 +1,7 @@
 <<<<<<< HEAD
 """adapted from Taco Cohen paper."""
 import torch
+
 =======
 """adapted from """
 >>>>>>> 4d6d9acde063758302f60a7197b0bda0a952b9a0
