@@ -2,13 +2,13 @@ name: "Linting and Testing"
 
 on:
   push:
-    branches: [master,github-actions-test]
+    branches: [main,github-actions-test]
     paths-ignore:
     - 'README.md'
     - '.deepsource.toml'
 
   pull_request:
-    branches: [master]
+    branches: [main,nicolas]
     paths-ignore:
     - 'README.md'
     - '.deepsource.toml'
