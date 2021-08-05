@@ -30,7 +30,6 @@ class TestPinchon:
         J = Jd[la]
         matrix = phd.rot_mat(alpha, beta, gamma, la, J)
         Id = torch.eye(5)
-        assert type(matrix) == torch.Tensor
         assert matrix.shape == (5, 5)
         assert (Id == matrix).all()
 
@@ -51,6 +50,5 @@ class TestPinchon:
         J = Jd[la]
         Id = torch.eye(5)
         matrix = phd.derivative_rot_mat(alpha, beta, gamma, la, J)
-        assert type(matrix) == torch.Tensor
         assert matrix.shape == (5, 5)
         assert (Id == matrix).all()
