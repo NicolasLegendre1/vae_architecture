@@ -32,7 +32,7 @@ class TestPinchon:
         Id = torch.eye(5)
         assert type(matrix) == torch.Tensor
         assert matrix.shape == (5, 5)
-        assert Id == matrix
+        assert (Id == matrix).all()
 
     @staticmethod
     def test_derivative_z_rot_mat():
@@ -53,4 +53,4 @@ class TestPinchon:
         matrix = phd.derivative_rot_mat(alpha, beta, gamma, la, J)
         assert type(matrix) == torch.Tensor
         assert matrix.shape == (5, 5)
-        assert Id == matrix
+        assert (Id == matrix).all()
