@@ -26,7 +26,7 @@ class TestPinchon:
         beta = 1
         gamma = 1
         la = 2
-        J = phd.open_Jd()[2]
+        Jd = phd.open_Jd()
+        J = Jd[la]
         matrix = phd.rot_mat(alpha, beta, gamma, la, J)
-        assert type(matrix) in torch.Tensor
         assert matrix.shape == (5, 5)
