@@ -174,7 +174,7 @@ def save_volume(particules, n_volumes, vol_size, main_dir, name, center=2):
     volumes, labels = simulate_volumes(
         particules, n_volumes, vol_size, center)
     np.save(path_molecules, volumes)
-    np.save(path_labels, volumes)
+    np.save(path_labels, labels)
 
     return volumes, labels
 

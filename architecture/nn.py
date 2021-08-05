@@ -745,57 +745,6 @@ class Discriminator(nn.Module):
         self.fc1 = nn.Linear(in_features=self.fcs_infeatures,
                              out_features=1)
 
-        # # discriminator
-        # self.dis1 = self.nn_conv(
-        #     in_channels=self.img_shape[0],
-        #     out_channels=self.dis_c,
-        #     kernel_size=self.dis_ks,
-        #     stride=self.dis_str,
-        #     padding=self.dis_pad)
-        # self.bn1 = self.nn_batch_norm(self.dis1.out_channels)
-        # self.dis1_out_shape = self.dis_conv_output_size(
-        #     in_shape=self.img_shape,
-        #     out_channels=self.dis1.out_channels)
-
-        # self.dis2 = self.nn_conv(
-        #     in_channels=self.dis1.out_channels,
-        #     out_channels=self.dis_c * 2,
-        #     kernel_size=self.dis_ks,
-        #     stride=self.dis_str,
-        #     padding=self.dis_pad)
-        # self.bn2 = self.nn_batch_norm(self.dis2.out_channels)
-        # self.dis2_out_shape = self.dis_conv_output_size(
-        #     in_shape=self.dis1_out_shape,
-        #     out_channels=self.dis2.out_channels)
-
-        # self.dis3 = self.nn_conv(
-        #     in_channels=self.dis2.out_channels,
-        #     out_channels=self.dis_c * 4,
-        #     kernel_size=self.dis_ks,
-        #     stride=self.dis_str,
-        #     padding=self.dis_pad)
-        # self.bn3 = self.nn_batch_norm(self.dis3.out_channels)
-        # self.dis3_out_shape = self.dis_conv_output_size(
-        #     in_shape=self.dis2_out_shape,
-        #     out_channels=self.dis3.out_channels)
-
-        # self.dis4 = self.nn_conv(
-        #     in_channels=self.dis3.out_channels,
-        #     out_channels=self.dis_c * 8,
-        #     kernel_size=self.dis_ks,
-        #     stride=self.dis_str,
-        #     padding=self.dis_pad)
-        # self.bn4 = self.nn_batch_norm(self.dis4.out_channels)
-        # self.dis4_out_shape = self.dis_conv_output_size(
-        #     in_shape=self.dis3_out_shape,
-        #     out_channels=self.dis4.out_channels)
-
-        # self.fcs_infeatures = functools.reduce(
-        #     (lambda x, y: x * y), self.dis4_out_shape)
-
-        # self.fc1 = nn.Linear(in_features=self.fcs_infeatures,
-        #                      out_features=1)
-
     def forward(self, x):
         """
         Forward pass of the discriminator is to take an image
@@ -817,13 +766,4 @@ class Discriminator(nn.Module):
         prob = self.sigmoid(h_feature)
         prob = prob.view(-1, 1)
 
-        # h1 = self.leakyrelu(self.bn1(self.dis1(x)))
-        # h2 = self.leakyrelu(self.bn2(self.dis2(h1)))
-        # h3 = self.leakyrelu(self.bn3(self.dis3(h2)))
-        # h4 = self.leakyrelu(self.bn4(self.dis4(h3)))
-        # h5 = h4.view(-1, self.fcs_infeatures)
-        # h5_feature = self.fc1(h5)
-        # prob = self.sigmoid(h5_feature)
-        # prob = prob.view(-1, 1)
-
-        return prob, 0, 0  # h5_feature,  h5_logvar
+        return prob, 0, 0

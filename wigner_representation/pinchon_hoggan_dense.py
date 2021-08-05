@@ -1,13 +1,23 @@
-"""adapted from Taco Cohen paper."""
-import torch
-import os
+"""Compute wigner matrix for neural network by adapting Taco Cohen's paper."""
 import numpy as np
+import os
+import torch
 
 CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda" if CUDA else "cpu")
 
 
 def open_Jd():
+    """
+    Open the file containing the precompute symmetric orthogonal block matrices
+    that exchange the Y and Z axis.
+
+    Returns
+    -------
+    J : list,
+        block matrices that exchanges the Y and Z.
+
+    """
     base = "J_dense_0-150.npy"
     path = os.path.join(os.path.dirname(__file__), base)
     Jd_numpy = np.load(path, allow_pickle=True)
@@ -23,12 +33,21 @@ Jd = open_Jd()
 def z_rot_mat(angle, la):
     """
     Create the matrix representation of a z-axis rotation by the given angle,
-    in the irrep l of dimension 2 * l + 1, in the basis of real centered
+    in the irrep l of dimension 2 * la + 1, in the basis of real centered
     spherical harmonics (RC basis in rep_bases.py).
 
-    Note: this function is easy to use, but inefficient: only the entries
-    on the diagonal and anti-diagonal are non-zero, so explicitly constructing
-    this matrix is unnecessary.
+    Parameters
+    ----------
+    angle : float,
+        angle of the rotation around z axis.
+    la : int,
+        2*la+1 is the dimension of the matrix.
+
+    Returns
+    -------
+    M : tensor,
+        matrix representation of a z-axis rotation.
+
     """
     M = torch.zeros((2 * la + 1, 2 * la + 1)).to(DEVICE)
     inds = torch.arange(0, 2 * la + 1, 1).to(DEVICE)
@@ -45,12 +64,27 @@ def rot_mat(alpha, beta, gamma, la, J):
     angles (alpha, beta, gamma) in representation l in the basis
     of real spherical harmonics.
 
-    The result is the same as the wignerD_mat function by Johann Goetz,
-    when the sign of alpha and gamma is flipped.
+    Parameters
+    ----------
+    alpha : float,
+        angle of the rotation around z axis.
+    beta : float
+        angle of the rotation around y axis.
+    gamma : float
+        angle of the rotation around z axis.
+    la : int,
+        2*la+1 is the dimension of the matrix.
+    J : tensor
+        block matrix that exchanges the Y and Z axis.
 
-    The forementioned function is here:
-    https://sites.google.com/site/theodoregoetz/notes/wignerdfunction
+
+    Returns
+    -------
+    matrix : tensor
+        representation matrix of a rotation.
+
     """
+
     Xa = z_rot_mat(alpha, la)
     Xb = z_rot_mat(beta, la)
     Xc = z_rot_mat(gamma, la)
@@ -60,6 +94,23 @@ def rot_mat(alpha, beta, gamma, la, J):
 
 
 def derivative_z_rot_mat(angle, la):
+    """
+    Compute the derivative matrix representation of a z-axis rotation by a
+    given angle
+
+    Parameters
+    ----------
+    angle : float,
+        angle of the rotation around z axis.
+    la : int,
+        2*la+1 is the dimension of the matrix.
+
+    Returns
+    -------
+    M : tensor,
+        derivative matrix representation of a z-axis rotation.
+
+    """
     M = np.zeros((2 * la + 1, 2 * la + 1))
     inds = np.arange(0, 2 * la + 1, 1)
     reversed_inds = np.arange(2 * la, -1, -1)
@@ -70,6 +121,31 @@ def derivative_z_rot_mat(angle, la):
 
 
 def derivative_rot_mat(alpha, beta, gamma, la, J):
+    """
+    Compute the derivative representation matrix of a rotation by ZYZ-Euler
+    angles (alpha, beta, gamma) in representation l in the basis
+    of real spherical harmonics.
+
+    Parameters
+    ----------
+    alpha : float,
+        angle of the rotation around z axis.
+    beta : float
+        angle of the rotation around y axis.
+    gamma : float
+        angle of the rotation around z axis.
+    la : int,
+        2*la+1 is the dimension of the matrix.
+    J : tensor
+        block matrix that exchanges the Y and Z axis.
+
+
+    Returns
+    -------
+    matrix : tensor
+        derivative matrix representation of a rotation.
+
+    """
     Xa = z_rot_mat(alpha, la)
     Xb = z_rot_mat(beta, la)
     Xc = z_rot_mat(gamma, la)
