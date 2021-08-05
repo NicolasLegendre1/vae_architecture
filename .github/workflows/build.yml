@@ -46,7 +46,8 @@ jobs:
           $CONDA/bin/pip install -e .
       - name: linting [flake8]
         run: |
-          $CONDA/bin/flake8 vae_architecture tests
+          $CONDA/bin/flake8 --ignore=D,W503,W504 iospi tests
+          $CONDA/bin/flake8  architecture exploitation_results simulation_data wigner_representation
       - name: unit testing [pytest]
         run: |
           $CONDA/bin/pytest tests
