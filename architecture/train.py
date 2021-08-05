@@ -96,7 +96,7 @@ NN_Architecture = ['img_shape', 'latent_dim',
                    'nn_type', 'with_sigmoid', 'n_enc_lay', 'n_dec_lay',
                    "n_gan_lay", "skip_z", "latent_space_definition", 'is_3d']
 
-N_EPOCHS = 512
+N_EPOCHS = 300
 
 LR = 15e-6
 if 'adversarial' in RECONSTRUCTIONS:
