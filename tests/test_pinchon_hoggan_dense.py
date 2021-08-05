@@ -2,7 +2,7 @@
 
 
 import torch
-
+import numpy
 from wigner_representation import pinchon_hoggan_dense as phd
 
 
