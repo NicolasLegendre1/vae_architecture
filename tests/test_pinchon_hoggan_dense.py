@@ -11,3 +11,4 @@ class TestPinchon:
 
         assert type(Jd[0]) is torch.Tensor
         assert len(Jd) == 150
+        assert 1 == 1
