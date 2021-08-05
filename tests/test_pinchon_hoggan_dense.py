@@ -1,4 +1,6 @@
 """Test pinchon_hoggan_dense"""
+
+import os
 import numpy as np
 import torch
 
