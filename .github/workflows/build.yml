@@ -44,10 +44,6 @@ jobs:
           # $CONDA is an environment variable pointing to the root of the miniconda directory
           $CONDA/bin/conda env update --file vae_architecture.yml --name base
           $CONDA/bin/pip install -e .
-      - name: linting [flake8]
-        run: |
-          $CONDA/bin/flake8 --ignore=D,W503,W504  tests
-          $CONDA/bin/flake8  architecture exploitation_results simulation_data wigner_representation
       - name: unit testing [pytest]
         run: |
           $CONDA/bin/pytest tests
