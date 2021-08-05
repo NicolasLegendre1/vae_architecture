@@ -1,6 +1,6 @@
 """Test pinchon_hoggan_dense"""
 
-import numpy as np
+
 import torch
 
 from wigner_representation import pinchon_hoggan_dense as phd
