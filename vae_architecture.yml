@@ -8,5 +8,5 @@ dependencies:
   - pip
   - pytest 
   - pytest-cov 
-  - pytorch=='1.8.1'
+  - pytorch
  
