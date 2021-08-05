@@ -1,8 +1,9 @@
 """Test pinchon_hoggan_dense"""
 
 
-import torch
 import numpy
+import torch
+
 from wigner_representation import pinchon_hoggan_dense as phd
 
 
