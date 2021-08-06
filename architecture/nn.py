@@ -2,6 +2,7 @@
 
 from geomstats.geometry.special_orthogonal import SpecialOrthogonal
 import functools
+from math import prod
 import numpy as np
 import os
 import torch
@@ -22,9 +23,10 @@ def test():
         path_vae)
     CONSTANTS.update(SEARCH_SPACE)
     CONSTANTS["latent_space_definition"] = 1
-    CONSTANTS["latent_dim"] = 10
+    CONSTANTS["latent_dim"] = 6
+    CONSTANTS["skip_z"] = True
     enc = EncoderConv(CONSTANTS)
-    A = torch.zeros(200, 1, 64, 64, 64)
+    A = torch.zeros(200, 1, 32, 32, 32)
     B = enc.forward(A)
     print(B[2].shape)
     dec = DecoderConv(CONSTANTS)
@@ -481,9 +483,7 @@ class DecoderConv(nn.Module):
             batch_norm, conv_tranpose, in_shape = self.block(
                 out_shape=required_in_shape,
                 dec_c_factor=dec_c_factor)
-
-            shape_h = required_in_shape[1] * \
-                required_in_shape[2]*dec_c_factor*2
+            shape_h = prod(required_in_shape)
             w_z = nn.Linear(self.latent_dim, shape_h, bias=False)
 
             blocks_reverse.append(w_z)

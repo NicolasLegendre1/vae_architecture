@@ -6,7 +6,10 @@ import json
 import numpy as np
 import os
 from PIL import Image
+from scipy.spatial.transform import Rotation as R
+
 import torch
+
 from torch.utils.data import DataLoader, random_split
 
 CUDA = torch.cuda.is_available()
@@ -176,3 +179,32 @@ def load_parameters(path):
             (lambda x, y: x * y), constants["img_shape"]
         )
         return paths, shapes, constants, search_space, meta_param_names
+
+
+def open_labels(path):
+    """
+    Open the file containing grown truth
+
+    Parameters
+    ----------
+    path : string
+        path of the dataset labels.
+
+    Returns
+    -------
+    rotation : array
+        Representation of rotation into matrices.
+    rotvec : array
+        Representation of rotation into axis angle.
+    labels : array
+        Representation of rotation into quaternion.
+    euler : array
+        Representation of rotation into euler ZYZ.
+
+    """
+    labels = np.load(path)
+    rot_representation = R.from_quat(labels)
+    rotation = rot_representation.as_matrix()
+    rotvec = rot_representation.as_rotvec()
+    euler = rot_representation.as_euler("ZYZ")
+    return rotation, rotvec, labels, euler

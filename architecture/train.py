@@ -612,7 +612,7 @@ if __name__ == "__main__":
             "lr": hp.loguniform(
                 "lr",
                 low=np.log(0.0001),
-                high=np.log(0.01)),
+                high=np.log(0.1)),
             "latent_dim": hp.choice("latent_dim", [6]),
             "n_enc_lay": hp.choice("n_enc_lay", [4, 5, 6]),
             "n_dec_lay": hp.choice("n_dec_lay", [4, 5, 6]),
@@ -622,7 +622,7 @@ if __name__ == "__main__":
             "lambda_adv": hp.loguniform(
                 "lambda_adv",
                 low=np.log(0.001), high=np.log(0.5)),
-            "batch_size": 8,
+            "batch_size": 20,
             "n_gan_lay": 4,
             "regu_factor": hp.loguniform(
                 'regu_factor',
