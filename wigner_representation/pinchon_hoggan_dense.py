@@ -1,6 +1,7 @@
 """Compute wigner matrix for neural network by adapting Taco Cohen's paper."""
-import numpy as np
 import os
+
+import numpy as np
 import torch
 
 CUDA = torch.cuda.is_available()
