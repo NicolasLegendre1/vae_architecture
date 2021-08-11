@@ -1,12 +1,14 @@
 """Open datasets and process them to be used by a neural network."""
 
 import functools
-import h5py
 import json
-import numpy as np
 import os
-from PIL import Image
+
+import h5py
+import numpy as np
 import torch
+from PIL import Image
+from scipy.spatial.transform import Rotation as R
 from torch.utils.data import DataLoader, random_split
 
 CUDA = torch.cuda.is_available()
@@ -115,10 +117,8 @@ def split_dataset(dataset, batch_size, frac_val):
     n_val = int(n_imgs * frac_val)
     trainset, testset = random_split(dataset, [n_imgs - n_val, n_val])
 
-    trainloader = DataLoader(
-        trainset, batch_size=batch_size, shuffle=True, **KWARGS)
-    testloader = DataLoader(
-        testset, batch_size=batch_size, shuffle=False, **KWARGS)
+    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, **KWARGS)
+    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, **KWARGS)
     return trainset, testset, trainloader, testloader
 
 
@@ -176,3 +176,32 @@ def load_parameters(path):
             (lambda x, y: x * y), constants["img_shape"]
         )
         return paths, shapes, constants, search_space, meta_param_names
+
+
+def open_labels(path):
+    """
+    Open the file containing grown truth
+
+    Parameters
+    ----------
+    path : string
+        path of the dataset labels.
+
+    Returns
+    -------
+    rotation : array
+        Representation of rotation into matrices.
+    rotvec : array
+        Representation of rotation into axis angle.
+    labels : array
+        Representation of rotation into quaternion.
+    euler : array
+        Representation of rotation into euler ZYZ.
+
+    """
+    labels = np.load(path)
+    rot_representation = R.from_quat(labels)
+    rotation = rot_representation.as_matrix()
+    rotvec = rot_representation.as_rotvec()
+    euler = rot_representation.as_euler("ZYZ")
+    return rotation, rotvec, labels, euler

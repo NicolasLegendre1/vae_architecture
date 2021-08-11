@@ -1,13 +1,16 @@
 """This file is creating Convolutional Neural Networks."""
 
-from geomstats.geometry.special_orthogonal import SpecialOrthogonal
 import functools
-import numpy as np
 import os
+from math import prod
+
+import cryo_dataset as ds
+import numpy as np
 import torch
 import torch.nn as nn
-import cryo_dataset as ds
-from pinchon_hoggan_dense import rot_mat, Jd
+from geomstats.geometry.special_orthogonal import SpecialOrthogonal
+from pinchon_hoggan_dense import Jd, rot_mat
+
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 
 CUDA = torch.cuda.is_available()
@@ -18,13 +21,13 @@ def test():
         path_vae = "Cryo/VAE_Cryo_V3/vae_parameters.json"
     else:
         path_vae = "vae_parameters.json"
-    PATHS, SHAPES, CONSTANTS, SEARCH_SPACE, _ = ds.load_parameters(
-        path_vae)
+    PATHS, SHAPES, CONSTANTS, SEARCH_SPACE, _ = ds.load_parameters(path_vae)
     CONSTANTS.update(SEARCH_SPACE)
     CONSTANTS["latent_space_definition"] = 1
-    CONSTANTS["latent_dim"] = 10
+    CONSTANTS["latent_dim"] = 6
+    CONSTANTS["skip_z"] = True
     enc = EncoderConv(CONSTANTS)
-    A = torch.zeros(200, 1, 64, 64, 64)
+    A = torch.zeros(200, 1, 32, 32, 32)
     B = enc.forward(A)
     print(B[2].shape)
     dec = DecoderConv(CONSTANTS)
@@ -32,23 +35,14 @@ def test():
     return C
 
 
-DEVICE = torch.device('cuda' if CUDA else 'cpu')
+DEVICE = torch.device("cuda" if CUDA else "cpu")
 
-NN_CONV = {
-    2: nn.Conv2d,
-    3: nn.Conv3d}
-NN_CONV_TRANSPOSE = {
-    2: nn.ConvTranspose2d,
-    3: nn.ConvTranspose3d}
+NN_CONV = {2: nn.Conv2d, 3: nn.Conv3d}
+NN_CONV_TRANSPOSE = {2: nn.ConvTranspose2d, 3: nn.ConvTranspose3d}
 
-NN_BATCH_NORM = {
-    2: nn.BatchNorm2d,
-    3: nn.BatchNorm3d}
+NN_BATCH_NORM = {2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
 
-LATENT_SPACE_DEFINITION = {
-    0: "R^L",
-    1: "SO(3)xR^L",
-    2: "SO(3)"}
+LATENT_SPACE_DEFINITION = {0: "R^L", 1: "SO(3)xR^L", 2: "SO(3)"}
 
 OUT_PAD = 0
 
@@ -92,8 +86,15 @@ def conv_parameters(conv_dim, kernel_size, stride, padding, dilation):
     return kernel_size, stride, padding, dilation
 
 
-def conv_transpose_input_size(out_shape, in_channels, kernel_size, stride,
-                              padding, dilation, output_padding=OUT_PAD):
+def conv_transpose_input_size(
+    out_shape,
+    in_channels,
+    kernel_size,
+    stride,
+    padding,
+    dilation,
+    output_padding=OUT_PAD,
+):
     """
     Compute the in_shape of a layer by knowing the output shape.
 
@@ -113,19 +114,23 @@ def conv_transpose_input_size(out_shape, in_channels, kernel_size, stride,
     """
     conv_dim = len(out_shape[1:])
     kernel_size, stride, padding, dilation = conv_parameters(
-        conv_dim, kernel_size, stride, padding, dilation)
+        conv_dim, kernel_size, stride, padding, dilation
+    )
     if type(output_padding) is int:
         output_padding = np.repeat(output_padding, conv_dim)
 
     def one_dim(i_dim):
         """Inverts the formula giving the output shape."""
         shape_i_dim = (
-            ((out_shape[i_dim+1]
-              + 2 * padding[i_dim]
-              - dilation[i_dim] * (kernel_size[i_dim] - 1)
-              - output_padding[i_dim] - 1)
-             // stride[i_dim])
-            + 1)
+            (
+                out_shape[i_dim + 1]
+                + 2 * padding[i_dim]
+                - dilation[i_dim] * (kernel_size[i_dim] - 1)
+                - output_padding[i_dim]
+                - 1
+            )
+            // stride[i_dim]
+        ) + 1
 
         if shape_i_dim % 1 != 0:
             raise ValueError
@@ -137,8 +142,7 @@ def conv_transpose_input_size(out_shape, in_channels, kernel_size, stride,
     return (in_channels,) + in_shape
 
 
-def conv_output_size(in_shape, out_channels, kernel_size, stride, padding,
-                     dilation):
+def conv_output_size(in_shape, out_channels, kernel_size, stride, padding, dilation):
     """
     Compute the output shape by knowing the input shape of a layer
 
@@ -161,15 +165,16 @@ def conv_output_size(in_shape, out_channels, kernel_size, stride, padding,
         stride=stride,
         padding=padding,
         output_padding=0,
-        dilation=dilation)
-    #out_shape = (out_shape[0], out_shape[1], out_shape[2])
+        dilation=dilation,
+    )
+    # out_shape = (out_shape[0], out_shape[1], out_shape[2])
     return out_shape
 
 
 class EncoderConv(nn.Module):
     """This class compute the Encoder"""
 
-    def __init__(self,  config):
+    def __init__(self, config):
         """
         Initialization of the encoder.
 
@@ -184,7 +189,7 @@ class EncoderConv(nn.Module):
         """
         super(EncoderConv, self).__init__()
         self.config = config
-        self.latent_dim = int(config["latent_dim"]/2)
+        self.latent_dim = int(config["latent_dim"] / 2)
         self.img_shape = config["img_shape"]
         self.conv_dim = config["conv_dim"]
         self.n_blocks = config["n_enc_lay"]
@@ -218,36 +223,41 @@ class EncoderConv(nn.Module):
                 out_channels=self.enc_c * enc_c_factor,
                 kernel_size=self.enc_ks,
                 stride=self.enc_str,
-                padding=self.enc_pad)
+                padding=self.enc_pad,
+            )
             bn = self.nn_batch_norm(enc.out_channels)
 
             self.blocks.append(enc)
             self.blocks.append(bn)
             enc_out_shape = self.enc_conv_output_size(
-                in_shape=next_in_shape,
-                out_channels=enc.out_channels)
+                in_shape=next_in_shape, out_channels=enc.out_channels
+            )
             next_in_shape = enc_out_shape
             next_in_channels = enc.out_channels
 
         self.last_out_shape = next_in_shape
 
         self.fcs_infeatures = functools.reduce(
-            (lambda x, y: x * y), self.last_out_shape)
+            (lambda x, y: x * y), self.last_out_shape
+        )
 
         self.fc1 = nn.Linear(
-            in_features=self.fcs_infeatures, out_features=self.latent_dim)
+            in_features=self.fcs_infeatures, out_features=self.latent_dim
+        )
 
         self.fc2 = nn.Linear(
-            in_features=self.fcs_infeatures, out_features=self.latent_dim)
+            in_features=self.fcs_infeatures, out_features=self.latent_dim
+        )
 
-        self.fc_nn_so3_mu = nn.Linear(
-            in_features=self.fcs_infeatures, out_features=3)
+        self.fc_nn_so3_mu = nn.Linear(in_features=self.fcs_infeatures, out_features=3)
 
         self.fc_nn_so3_logvar = nn.Linear(
-            in_features=self.fcs_infeatures, out_features=3)
+            in_features=self.fcs_infeatures, out_features=3
+        )
 
         self.fc_so3_latent_space = nn.Linear(
-            in_features=3, out_features=self.latent_dim)
+            in_features=3, out_features=self.latent_dim
+        )
 
     def enc_conv_output_size(self, in_shape, out_channels):
         """
@@ -264,11 +274,13 @@ class EncoderConv(nn.Module):
 
         """
         return conv_output_size(
-            in_shape, out_channels,
+            in_shape,
+            out_channels,
             kernel_size=self.enc_ks,
             stride=self.enc_str,
             padding=self.enc_pad,
-            dilation=self.enc_dil)
+            dilation=self.enc_dil,
+        )
 
     def forward(self, x):
         """
@@ -286,8 +298,8 @@ class EncoderConv(nn.Module):
         """
         h = x
         for i in range(self.n_blocks):
-            h = self.blocks[2*i](h)
-            h = self.blocks[2*i+1](h)
+            h = self.blocks[2 * i](h)
+            h = self.blocks[2 * i + 1](h)
             h = self.leakyrelu(h)
         h = h.view(-1, self.fcs_infeatures)
         if self.latent_space_definition == 0:
@@ -314,27 +326,25 @@ def transform_into_so3(mu, logvar, latent_dim, n_samples=1):
     n_batch_data, latent_shape = mu.shape
     sigma = logvar.mul(0.5).exp_()
     if CUDA:
-        eps = torch.cuda.FloatTensor(
-            n_samples, n_batch_data, latent_shape).normal_()
+        eps = torch.cuda.FloatTensor(n_samples, n_batch_data, latent_shape).normal_()
     else:
-        eps = torch.FloatTensor(n_samples, n_batch_data,
-                                latent_shape).normal_()
+        eps = torch.FloatTensor(n_samples, n_batch_data, latent_shape).normal_()
     eps = eps.reshape(eps.shape[1:])
-    tang_mu = eps*sigma
-    z = mu+tang_mu
+    tang_mu = eps * sigma
+    z = mu + tang_mu
     matrices = rot_mat_tensor(z, latent_dim)
     return matrices
 
 
 def rot_mat_tensor(tens, latent_dim):
     batch_size = tens.shape[0]
-    J = Jd[int((latent_dim-1)/2)].to(DEVICE)
+    J = Jd[int((latent_dim - 1) / 2)].to(DEVICE)
     matrices = torch.Tensor(batch_size, latent_dim, latent_dim).to(DEVICE)
     for i in range(batch_size):
         alpha = tens[i][0]
         beta = tens[i][1]
         gamma = tens[i][2]
-        matrices[i] = rot_mat(alpha, beta, gamma, int((latent_dim-1)/2), J)
+        matrices[i] = rot_mat(alpha, beta, gamma, int((latent_dim - 1) / 2), J)
     return matrices
 
 
@@ -361,7 +371,8 @@ class DecoderConv(nn.Module):
             kernel_size=self.dec_ks,
             stride=self.dec_str,
             padding=self.dec_pad,
-            dilation=self.dec_dil)
+            dilation=self.dec_dil,
+        )
 
     def block(self, out_shape, dec_c_factor):
         """
@@ -382,19 +393,18 @@ class DecoderConv(nn.Module):
         out_channels = out_shape[0]
         in_channels = self.dec_c * dec_c_factor
 
-        batch_norm = self.nn_batch_norm(
-            num_features=out_channels,
-            eps=1.e-3)
+        batch_norm = self.nn_batch_norm(num_features=out_channels, eps=1.0e-3)
 
         conv_transpose = self.nn_conv_transpose(
             in_channels=in_channels,
             out_channels=out_channels,
             kernel_size=self.dec_ks,
-            stride=self.dec_str)
+            stride=self.dec_str,
+        )
 
         in_shape = self.dec_conv_transpose_input_size(
-            out_shape=out_shape,
-            in_channels=in_channels)
+            out_shape=out_shape, in_channels=in_channels
+        )
         return batch_norm, conv_transpose, in_shape
 
     def end_block(self, out_shape, dec_c_factor):
@@ -419,11 +429,12 @@ class DecoderConv(nn.Module):
             in_channels=in_channels,
             out_channels=out_channels,
             kernel_size=self.dec_ks,
-            stride=self.dec_str)
+            stride=self.dec_str,
+        )
 
         in_shape = self.dec_conv_transpose_input_size(
-            out_shape=out_shape,
-            in_channels=in_channels)
+            out_shape=out_shape, in_channels=in_channels
+        )
         return conv_transpose, in_shape
 
     def __init__(self, config):
@@ -463,9 +474,11 @@ class DecoderConv(nn.Module):
 
         # decoder - layers in reverse order
         conv_transpose_recon, required_in_shape_r = self.end_block(
-            out_shape=self.img_shape, dec_c_factor=2 ** (self.n_blocks-1))
+            out_shape=self.img_shape, dec_c_factor=2 ** (self.n_blocks - 1)
+        )
         conv_transpose_scale, required_in_shape_s = self.end_block(
-            out_shape=self.img_shape, dec_c_factor=2 ** (self.n_blocks-1))
+            out_shape=self.img_shape, dec_c_factor=2 ** (self.n_blocks - 1)
+        )
 
         self.conv_transpose_recon = conv_transpose_recon
         self.conv_transpose_scale = conv_transpose_scale
@@ -475,15 +488,13 @@ class DecoderConv(nn.Module):
         required_in_shape = required_in_shape_r
 
         blocks_reverse = torch.nn.ModuleList()
-        for i in reversed(range(self.n_blocks-1)):
+        for i in reversed(range(self.n_blocks - 1)):
             dec_c_factor = 2 ** i
 
             batch_norm, conv_tranpose, in_shape = self.block(
-                out_shape=required_in_shape,
-                dec_c_factor=dec_c_factor)
-
-            shape_h = required_in_shape[1] * \
-                required_in_shape[2]*dec_c_factor*2
+                out_shape=required_in_shape, dec_c_factor=dec_c_factor
+            )
+            shape_h = prod(required_in_shape)
             w_z = nn.Linear(self.latent_dim, shape_h, bias=False)
 
             blocks_reverse.append(w_z)
@@ -495,11 +506,11 @@ class DecoderConv(nn.Module):
         self.blocks = blocks_reverse[::-1]
         self.in_shape = required_in_shape
 
-        self.fcs_infeatures = functools.reduce(
-            (lambda x, y: x * y), self.in_shape)
+        self.fcs_infeatures = functools.reduce((lambda x, y: x * y), self.in_shape)
 
         self.l0 = nn.Linear(
-            in_features=self.latent_dim, out_features=self.fcs_infeatures)
+            in_features=self.latent_dim, out_features=self.fcs_infeatures
+        )
 
     def forward(self, z):
         """
@@ -518,12 +529,12 @@ class DecoderConv(nn.Module):
         h1 = self.relu(self.l0(z))
         h = h1.view((-1,) + self.in_shape)
 
-        for i in range(self.n_blocks-1):
-            h = self.blocks[3*i](h)
-            h = self.blocks[3*i+1](h)
+        for i in range(self.n_blocks - 1):
+            h = self.blocks[3 * i](h)
+            h = self.blocks[3 * i + 1](h)
             if self.skip_z:
-                z1 = self.blocks[3*i+2](z).reshape(h.shape)
-                h = self.leakyrelu(h+z1)
+                z1 = self.blocks[3 * i + 2](z).reshape(h.shape)
+                h = self.leakyrelu(h + z1)
 
         recon = self.conv_transpose_recon(h)
         scale_b = self.conv_transpose_scale(h)
@@ -558,11 +569,9 @@ class VaeConv(nn.Module):
         self.n_encoder_blocks = config["n_enc_lay"]
         self.n_decoder_blocks = config["n_dec_lay"]
 
-        self.encoder = EncoderConv(
-            config)
+        self.encoder = EncoderConv(config)
 
-        self.decoder = DecoderConv(
-            config)
+        self.decoder = DecoderConv(config)
 
     def forward(self, x):
         """
@@ -603,14 +612,11 @@ def reparametrize(mu, logvar, n_samples=1):
     n_batch_data, latent_dim = mu.shape
 
     std = logvar.mul(0.5).exp_()
-    std_expanded = std.expand(
-        n_samples, n_batch_data, latent_dim)
-    mu_expanded = mu.expand(
-        n_samples, n_batch_data, latent_dim)
+    std_expanded = std.expand(n_samples, n_batch_data, latent_dim)
+    mu_expanded = mu.expand(n_samples, n_batch_data, latent_dim)
 
     if CUDA:
-        eps = torch.cuda.FloatTensor(
-            n_samples, n_batch_data, latent_dim).normal_()
+        eps = torch.cuda.FloatTensor(n_samples, n_batch_data, latent_dim).normal_()
     else:
         eps = torch.FloatTensor(n_samples, n_batch_data, latent_dim).normal_()
     eps = torch.autograd.Variable(eps)
@@ -679,11 +685,13 @@ class Discriminator(nn.Module):
 
         """
         return conv_output_size(
-            in_shape, out_channels,
+            in_shape,
+            out_channels,
             kernel_size=self.dis_ks,
             stride=self.dis_str,
             padding=self.dis_pad,
-            dilation=self.dis_dil)
+            dilation=self.dis_dil,
+        )
 
     def __init__(self, config):
         """
@@ -730,20 +738,19 @@ class Discriminator(nn.Module):
                 out_channels=self.dis_c * dis_c_factor,
                 kernel_size=self.dis_ks,
                 stride=self.dis_str,
-                padding=self.dis_pad)
+                padding=self.dis_pad,
+            )
             bn = self.nn_batch_norm(dis.out_channels)
             self.blocks.append(dis)
             self.blocks.append(bn)
             next_in_channels = dis.out_channels
             self.dis_out_shape = self.dis_conv_output_size(
-                in_shape=self.dis_out_shape,
-                out_channels=next_in_channels)
+                in_shape=self.dis_out_shape, out_channels=next_in_channels
+            )
 
-        self.fcs_infeatures = functools.reduce(
-            (lambda x, y: x * y), self.dis_out_shape)
+        self.fcs_infeatures = functools.reduce((lambda x, y: x * y), self.dis_out_shape)
 
-        self.fc1 = nn.Linear(in_features=self.fcs_infeatures,
-                             out_features=1)
+        self.fc1 = nn.Linear(in_features=self.fcs_infeatures, out_features=1)
 
     def forward(self, x):
         """
@@ -760,7 +767,7 @@ class Discriminator(nn.Module):
         """
         h = x
         for i in range(self.n_blocks):
-            h = self.leakyrelu(self.blocks[2*i+1](self.blocks[2*i](h)))
+            h = self.leakyrelu(self.blocks[2 * i + 1](self.blocks[2 * i](h)))
         h = h.view(-1, self.fcs_infeatures)
         h_feature = self.fc1(h)
         prob = self.sigmoid(h_feature)

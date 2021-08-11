@@ -12,7 +12,7 @@
 			"real_3d": "data.hdf5",
 			"4points": "4points.npy",
 			"4points1": "4points1.npy",
-			"4points_3d": "3d_images.npy"
+			"4points_3d": "3d_images_molecules.npy"
 		},
 
 	"shape":
@@ -21,12 +21,12 @@
 			"simulated_2d": {"items": [1, 128, 128],"__tuple__":true},
 			"4points": {"items": [1, 128, 128],"__tuple__":true},
 			"4points1": {"items": [1, 64, 64],"__tuple__":true},
-			"4points_3d": {"items": [1,64, 64, 64],"__tuple__":true}
+			"4points_3d": {"items": [1,32, 32, 32],"__tuple__":true}
 		},
 
 	"constants":
 		{
-			"img_shape": {"items": [1, 64,64, 64],"__tuple__":true},
+			"img_shape": {"items": [1, 32,32, 32],"__tuple__":true},
 			"with_sigmoid": "true",
 			"out_channels": "1",
 			"is_3d": true,
@@ -65,7 +65,7 @@
 			"batch_size": 20,
 			"adversarial": false,
 			"n_gan_lay":4,
-			"lr": 0.001,
+			"lr": 0.01,
 			"regu_factor": 0.003,
 			"lambda_regu": 0.2,
 			"lambda_adv": 0.2,
