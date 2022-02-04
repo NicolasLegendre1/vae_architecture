@@ -1,0 +1,12 @@
+{
+	"dimension": 2,
+	"dataset": "eiffel",
+	"size": 32,
+	"latent_space": "so2",
+	"mean_mode": "v",
+	"with_ray": true,
+	"debug":false,
+	"print_interval":10,
+	"ckpt_period":10,
+	"n_epochs":300
+}

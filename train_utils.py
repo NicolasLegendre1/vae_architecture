@@ -6,14 +6,15 @@ import os
 import torch
 import torch.nn as tnn
 from scipy.spatial.transform import Rotation as R
+from pinchon_hoggan_dense import rot_mat, Jd
 
-import nn
-import cryo_dataset as ds
+import neural_network
 
 CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda" if CUDA else "cpu")
 
 CKPT_PERIOD = 1
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 W_INIT, B_INIT, NONLINEARITY_INIT = (
     {0: [[1.0], [0.0]],
@@ -110,13 +111,12 @@ def init_function(weights_init='xavier'):
         "This weight initialization is not implemented.")
 
 
-def init_modules_and_optimizers(train_params, config):
+def init_modules_and_optimizers(config):
     """
     Initialization of the different modules and optimizer of the NN.
 
     Parameters
     ----------
-    train_params : dic, meta parameters for the NN.
     config : dic, meta parameters for the NN.
 
     Returns
@@ -127,21 +127,13 @@ def init_modules_and_optimizers(train_params, config):
     """
     modules = {}
     optimizers = {}
-    lr = train_params['lr']
-    beta1 = train_params['beta1']
-    beta2 = train_params['beta2']
-    vae = nn.VaeConv(config).to(DEVICE)
+    lr = config['lr']
+    beta1 = config['beta1']
+    beta2 = config['beta2']
+    vae = neural_network.VaeConv(config).to(DEVICE)
 
     modules['encoder'] = vae.encoder
     modules['decoder'] = vae.decoder
-
-    if 'adversarial' in train_params['reconstructions']:
-        discriminator = nn.Discriminator(config).to(DEVICE)
-        modules['discriminator_reconstruction'] = discriminator
-
-    if 'adversarial' in train_params['regularizations']:
-        discriminator = nn.Discriminator(config).to(DEVICE)
-        modules['discriminator_regularization'] = discriminator
 
     # Optimizers
     optimizers['encoder'] = torch.optim.Adam(
@@ -149,29 +141,16 @@ def init_modules_and_optimizers(train_params, config):
     optimizers['decoder'] = torch.optim.Adam(
         modules['decoder'].parameters(), lr=lr, betas=(beta1, beta2))
 
-    if 'adversarial' in train_params['reconstructions']:
-        optimizers['discriminator_reconstruction'] = torch.optim.Adam(
-            modules['discriminator_reconstruction'].parameters(),
-            lr=train_params['lr'],
-            betas=(train_params['beta1'], train_params['beta2']))
-
-    if 'adversarial' in train_params['regularizations']:
-        optimizers['discriminator_regularization'] = torch.optim.Adam(
-            modules['discriminator_regularization'].parameters(),
-            lr=train_params['lr'],
-            betas=(train_params['beta1'], train_params['beta2']))
-
     return modules, optimizers
 
 
-def init_training(train_dir, train_params, config):
+def init_training(train_dir, config):
     """
     Initialization; Load ckpts or init.
 
     Parameters
     ----------
     train_dir : string, dir where to save the modules.
-    train_params : dic, meta parameters for the NN.
     config : dic, meta parameters for the NN.
 
     Returns
@@ -186,13 +165,12 @@ def init_training(train_dir, train_params, config):
     train_losses_all_epochs = []
     val_losses_all_epochs = []
 
-    modules, optimizers = init_modules_and_optimizers(
-        train_params, config)
+    modules, optimizers = init_modules_and_optimizers(config)
 
     path_base = os.path.join(train_dir, 'epoch_*_checkpoint.pth')
     ckpts = glob.glob(path_base)
     if len(ckpts) == 0:
-        weights_init = train_params['weights_init']
+        weights_init = config['weights_init']
         logging.info(
             "No checkpoints found. Initializing with %s.", weights_init)
 
@@ -228,7 +206,7 @@ def init_training(train_dir, train_params, config):
 
 def save_checkpoint(epoch, modules, optimizers, dir_path,
                     train_losses_all_epochs, val_losses_all_epochs,
-                    nn_architecture, train_params):
+                    config, meta_config):
     """
     Save NN's weights at a precise epoch.
 
@@ -258,8 +236,8 @@ def save_checkpoint(epoch, modules, optimizers, dir_path,
         checkpoint['epoch'] = epoch
         checkpoint['train_losses'] = train_losses_all_epochs
         checkpoint['val_losses'] = val_losses_all_epochs
-        checkpoint['nn_architecture'] = nn_architecture
-        checkpoint['train_params'] = train_params
+        checkpoint['config'] = config
+        checkpoint['meta_config'] = meta_config
     checkpoint_path = os.path.join(
         dir_path, 'epoch_%d_checkpoint.pth' % epoch)
     torch.save(checkpoint, checkpoint_path)
@@ -386,7 +364,7 @@ def quaternion_to_euler(labels):
     return liste
 
 
-def load_module(output, path_vae_param, module_name='encoder', epoch_id=None):
+def load_module(output, module_name='encoder', epoch_id=None):
     """
     Affects weights of the considered epoch_id to NN's weights.
 
@@ -403,21 +381,12 @@ def load_module(output, path_vae_param, module_name='encoder', epoch_id=None):
     module : NN, NN with the weight of the NN after the epoch_id.
 
     """
-    _, _, c, _, m = ds.load_parameters(
-        path_vae_param)
-    constants, meta_param_names = c, m
     ckpt = load_checkpoint(
         output=output, epoch_id=epoch_id)
-    nn_architecture = ckpt['nn_architecture']
-    if "is_3d" not in nn_architecture.keys():
-        nn_architecture["is_3d"] = True
-    nn_architecture['conv_dim'] = 3 if nn_architecture["is_3d"] else 2
-    nn_architecture.update(get_under_dic_cons(
-        constants, meta_param_names))
-    nn_type = nn_architecture['nn_type']
-    print('Loading %s from network of architecture: %s...' % (
-        module_name, nn_type))
-    vae = nn.VaeConv(nn_architecture)
+    config = ckpt["config"]
+    print('Loading %s ' % (
+        module_name))
+    vae = neural_network.VaeConv(config)
     modules = {}
     modules['encoder'] = vae.encoder
     modules['decoder'] = vae.decoder

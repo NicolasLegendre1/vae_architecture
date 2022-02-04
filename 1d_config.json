@@ -1,0 +1,61 @@
+{
+	"vae":
+		{
+			"beta1": 0.9,
+			"beta2": 0.999,
+			"frac_val": 0.2,
+			"with_sigmoid": "true",
+			"skip_z": false,
+			"weights_init": "xavier",
+			"nn_type": "conv"
+		},
+
+	"losses":
+		{
+			"reconstructions": {"items": ["bce_on_intensities"], "__tuple__":true},
+			"regularizations": ["kullbackleibler"],
+			"bce": true,
+			"regu_factor": 0.003,
+			"lambda_regu": 0.2,
+			"lambda_adv": 0.2,
+			"lr": 0.01
+		},
+
+	"cnn":
+		{
+			"n_enc_lay": 2,
+			"n_dec_lay":2,
+			"enc_ks": 4,
+			"enc_str": 2,
+			"enc_pad": 1,
+			"enc_dil": 1,
+			"enc_c": 1,
+			"dec_ks": 3,
+			"dec_str": 1,
+			"dec_pad": 0,
+			"dec_dil": 1,
+			"dec_c": 1
+		},
+
+	"wigner_representation":
+		{
+			"wigner_dim": 2,
+			"latent_mode":"so3",
+			"mean_mode" :"alg",
+			"item_rep": {"__none__":true},
+			"rep_copies": 10
+		},
+
+	"latent_space":
+		{
+			"SO2":1,
+			"R^1":2,
+			"R^2":3
+		},
+
+	"datasets":
+		{
+			"eiffel": "simulation\\eiffel_dataset\\eiffel_lines.npy",
+			"toy": "simulation\\toy_dataset\\toy_lines.npy"
+		}
+}
